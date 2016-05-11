@@ -270,7 +270,7 @@ void ClothSimImpl::start_recording(std::string record_name)
 		stop_recording();
 
 	record_name += ".csv";
-	this->record_stream.open(record_name.c_str(), std::ofstream::out | std::ofstream::binary);
+	this->record_stream.open(record_name.c_str());
 
 	this->t = 0.f;
 	this->_recording = true;
@@ -452,7 +452,7 @@ void ClothSimImpl::renderDepthImage()
 
 void ClothSimImpl::write_data_to_file()
 {
-	this->record_stream.write(reinterpret_cast<const char *>(&this->t), sizeof(double));
+	this->record_stream << this->t;
 	for (int i = 0; i < this->n_points; i++)
 	{
 		this->record_stream << ", " << this->cloth->m_nodes[i].m_x.x() << ", " << this->cloth->m_nodes[i].m_x.y() << ", " << this->cloth->m_nodes[i].m_x.z();
