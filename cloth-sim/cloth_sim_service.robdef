@@ -7,6 +7,17 @@ struct Pose
     field double[3] p
 end struct
 
+struct ClothDefinition
+    field single width
+    field single length
+    field single mass
+    field uint16 numX
+    field uint16 numY
+    field uint32 n_points
+    field single structure_stiffness
+    field single bending_stiffness
+end struct
+
 struct ClothState
     field double t
     field uint16 numX
@@ -15,10 +26,15 @@ struct ClothState
     field double[] x
     field double[] y
     field double[] z
-    field double[] fx
-    field double[] fy
-    field double[] fz
+    field double[] f
     
+end struct
+
+struct ClothLinks
+    field uint16[] left_node
+    field uint16[] right_node
+    field single[] length
+    field single[] stiffness
 end struct
 
 struct DepthImage
@@ -33,11 +49,17 @@ object ClothSimulator
     property uint16[] grasped_nodes01
     property uint16[] grasped_nodes11
     
+    function ClothDefinition getClothDefinition()
+    function ClothLinks getClothLinks()
+    function void setClothStiffness(double stiffness, uint8 piterations)
+    
     function void start_recording(string record_name)
     function void stop_recording()
     
     function ClothState stepForwardSim(double tstep, Pose p00, Pose p10, Pose p01, Pose p11)
+    function ClothState stepSimToConverge(Pose p00, Pose p10, Pose p01, Pose p11)
     function uint16[] getFaceStructure()
+    
     function void setCameraPose(Pose pk)
     function DepthImage getRenderedImage()
     

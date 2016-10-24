@@ -56,6 +56,9 @@ public:
 	virtual RR_SHARED_PTR<RobotRaconteur::RRArray<uint16_t > > get_grasped_nodes11();
 	virtual void set_grasped_nodes11(RR_SHARED_PTR<RobotRaconteur::RRArray<uint16_t > > value);
 
+	virtual RR_SHARED_PTR<edu::rpi::cats::utilities::clothsim::ClothDefinition > getClothDefinition();
+	virtual RR_SHARED_PTR<edu::rpi::cats::utilities::clothsim::ClothLinks > getClothLinks();
+
 	int initWorldAndCloth();
 
 	virtual void start_recording(std::string record_name);
@@ -67,16 +70,23 @@ public:
 									RR_SHARED_PTR<edu::rpi::cats::utilities::clothsim::Pose > p10, 
 									RR_SHARED_PTR<edu::rpi::cats::utilities::clothsim::Pose > p01, 
 									RR_SHARED_PTR<edu::rpi::cats::utilities::clothsim::Pose > p11);
+	virtual RR_SHARED_PTR<edu::rpi::cats::utilities::clothsim::ClothState > stepSimToConverge(
+									RR_SHARED_PTR<edu::rpi::cats::utilities::clothsim::Pose > p00,
+									RR_SHARED_PTR<edu::rpi::cats::utilities::clothsim::Pose > p10,
+									RR_SHARED_PTR<edu::rpi::cats::utilities::clothsim::Pose > p01,
+									RR_SHARED_PTR<edu::rpi::cats::utilities::clothsim::Pose > p11);
 
 
 	virtual RR_SHARED_PTR<RobotRaconteur::RRArray<uint16_t > > getFaceStructure();
+	virtual void setClothStiffness(double stiffness, uint8_t piterations);
 
 	virtual void setCameraPose(RR_SHARED_PTR<edu::rpi::cats::utilities::clothsim::Pose > pk);
 	virtual RR_SHARED_PTR<edu::rpi::cats::utilities::clothsim::DepthImage > getRenderedImage();
 
 private:
 	double *x, *y, *z;
-	double *fx, *fy, *fz;
+	double *f;// x, *fy, *fz;
+	std::vector<btVector3> spring_forces;
 	uint16_t numX, numY;
 	uint32_t n_points;
 	btScalar cloth_width, cloth_length, cloth_mass, cloth_stiffness, cloth_bending_stiffness, cloth_damping;
@@ -107,6 +117,8 @@ private:
 	void setNewGraspVelocities(double tstep, RR_SHARED_PTR<edu::rpi::cats::utilities::clothsim::Pose > p, std::vector<node_relationship> &grasp_nodes);
 	void stepForwardGraspPoints(double tstep, std::vector<node_relationship> grasp_nodes);
 	void solveSpringForces(btScalar structural_stiffness, btScalar bending_stiffness);
+	void solveNodeCost();
+	void addSpringForces(btScalar structural_stiffness, btScalar bending_stiffness);
 	void renderDepthImage();
 	void write_data_to_file();
 };

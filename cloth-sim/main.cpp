@@ -17,8 +17,26 @@ int main(int argc, char *argv[])
 							RobotRaconteur::IPNodeDiscoveryFlags_SITE_LOCAL);
 	RobotRaconteur::RobotRaconteurNode::s()->RegisterTransport(t);
 	
+	std::string in_string;
+	btScalar width, length;
+	std::cout << "How long is the cloth in X (0.6 default): ";
+	std::getline(std::cin, in_string);
+	if (in_string.length() == 0)
+		width = 0.6;
+	else
+		width = stof(in_string);
+	std::cout << "How long is the cloth in Y (0.4 default): ";
+	std::getline(std::cin, in_string);
+	if (in_string.length() == 0)
+		length = 0.4;
+	else
+		length = stof(in_string);
+
+	std::cout << "w: " << width << " l: " << length << std::endl;
+	
+
 	// Create the Kinect object (nx ny w h m k)
-	boost::shared_ptr<ClothSimImpl> k = boost::make_shared<ClothSimImpl>(31, 31, 0.6, 0.4, 0.5, 0.1f, 0.1f, 0.1f);
+	boost::shared_ptr<ClothSimImpl> k = boost::make_shared<ClothSimImpl>(31, 31, width, length, 0.5, 1.0f, 1.0f, 0.1f);
 
 	// Register the service type with Robot Raconteur
 	RobotRaconteur::RobotRaconteurNode::s()->RegisterServiceType(boost::make_shared<edu::rpi::cats::utilities::clothsim::edu__rpi__cats__utilities__clothsimFactory>());

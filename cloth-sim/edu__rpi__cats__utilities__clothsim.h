@@ -16,7 +16,9 @@ namespace clothsim
 {
 
 class Pose;
+class ClothDefinition;
 class ClothState;
+class ClothLinks;
 class DepthImage;
 class ClothSimulator;
 
@@ -28,6 +30,20 @@ RR_SHARED_PTR<RobotRaconteur::RRArray<double > > p;
 virtual std::string RRType() {return "edu.rpi.cats.utilities.clothsim.Pose";  }
 };
 
+class ClothDefinition : public RobotRaconteur::RRStructure {
+public:
+float width;
+float length;
+float mass;
+uint16_t numX;
+uint16_t numY;
+uint32_t n_points;
+float structure_stiffness;
+float bending_stiffness;
+
+virtual std::string RRType() {return "edu.rpi.cats.utilities.clothsim.ClothDefinition";  }
+};
+
 class ClothState : public RobotRaconteur::RRStructure {
 public:
 double t;
@@ -37,11 +53,19 @@ uint32_t n_points;
 RR_SHARED_PTR<RobotRaconteur::RRArray<double > > x;
 RR_SHARED_PTR<RobotRaconteur::RRArray<double > > y;
 RR_SHARED_PTR<RobotRaconteur::RRArray<double > > z;
-RR_SHARED_PTR<RobotRaconteur::RRArray<double > > fx;
-RR_SHARED_PTR<RobotRaconteur::RRArray<double > > fy;
-RR_SHARED_PTR<RobotRaconteur::RRArray<double > > fz;
+RR_SHARED_PTR<RobotRaconteur::RRArray<double > > f;
 
 virtual std::string RRType() {return "edu.rpi.cats.utilities.clothsim.ClothState";  }
+};
+
+class ClothLinks : public RobotRaconteur::RRStructure {
+public:
+RR_SHARED_PTR<RobotRaconteur::RRArray<uint16_t > > left_node;
+RR_SHARED_PTR<RobotRaconteur::RRArray<uint16_t > > right_node;
+RR_SHARED_PTR<RobotRaconteur::RRArray<float > > length;
+RR_SHARED_PTR<RobotRaconteur::RRArray<float > > stiffness;
+
+virtual std::string RRType() {return "edu.rpi.cats.utilities.clothsim.ClothLinks";  }
 };
 
 class DepthImage : public RobotRaconteur::RRStructure {
@@ -68,11 +92,19 @@ virtual void set_grasped_nodes01(RR_SHARED_PTR<RobotRaconteur::RRArray<uint16_t 
 virtual RR_SHARED_PTR<RobotRaconteur::RRArray<uint16_t > > get_grasped_nodes11()=0;
 virtual void set_grasped_nodes11(RR_SHARED_PTR<RobotRaconteur::RRArray<uint16_t > > value)=0;
 
+virtual RR_SHARED_PTR<ClothDefinition > getClothDefinition()=0;
+
+virtual RR_SHARED_PTR<ClothLinks > getClothLinks()=0;
+
+virtual void setClothStiffness(double stiffness, uint8_t piterations)=0;
+
 virtual void start_recording(std::string record_name)=0;
 
 virtual void stop_recording()=0;
 
 virtual RR_SHARED_PTR<ClothState > stepForwardSim(double tstep, RR_SHARED_PTR<Pose > p00, RR_SHARED_PTR<Pose > p10, RR_SHARED_PTR<Pose > p01, RR_SHARED_PTR<Pose > p11)=0;
+
+virtual RR_SHARED_PTR<ClothState > stepSimToConverge(RR_SHARED_PTR<Pose > p00, RR_SHARED_PTR<Pose > p10, RR_SHARED_PTR<Pose > p01, RR_SHARED_PTR<Pose > p11)=0;
 
 virtual RR_SHARED_PTR<RobotRaconteur::RRArray<uint16_t > > getFaceStructure()=0;
 

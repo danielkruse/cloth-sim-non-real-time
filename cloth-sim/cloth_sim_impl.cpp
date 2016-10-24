@@ -45,9 +45,13 @@ ClothSimImpl::ClothSimImpl(uint16_t nX, uint16_t nY, btScalar width, btScalar le
 		this->x = new double[this->cloth->m_nodes.size()];
 		this->y = new double[this->cloth->m_nodes.size()];
 		this->z = new double[this->cloth->m_nodes.size()];
-		this->fx = new double[this->cloth->m_nodes.size()];
-		this->fy = new double[this->cloth->m_nodes.size()];
-		this->fz = new double[this->cloth->m_nodes.size()];
+		this->f = new double[this->cloth->m_nodes.size()];
+		//this->fx = new double[this->cloth->m_nodes.size()];
+		//this->fy = new double[this->cloth->m_nodes.size()];
+		//this->fz = new double[this->cloth->m_nodes.size()];
+		for (int i = 0, ni = this->cloth->m_nodes.size(); i < ni; i++)
+			this->spring_forces.push_back(btVector3(0.f, 0.f, 0.f));
+
 	}
 	else
 		std::cout << "Something went wrong and things aren't simulating" << std::endl;
@@ -56,6 +60,51 @@ ClothSimImpl::ClothSimImpl(uint16_t nX, uint16_t nY, btScalar width, btScalar le
 ClothSimImpl::~ClothSimImpl()
 {
 	shutdown();
+}
+
+RR_SHARED_PTR<edu::rpi::cats::utilities::clothsim::ClothDefinition > ClothSimImpl::getClothDefinition()
+{
+	boost::lock_guard<boost::mutex> guard(mtx_);
+	RR_SHARED_PTR<edu::rpi::cats::utilities::clothsim::ClothDefinition > d(new edu::rpi::cats::utilities::clothsim::ClothDefinition());
+	
+	d->length = this->cloth_length;
+	d->width = this->cloth_width;
+	d->mass = this->cloth_mass;
+	d->numX = this->numX;
+	d->numY = this->numY;
+	d->n_points = (uint32_t)this->numX * (uint32_t)this->numY;
+	d->structure_stiffness = this->cloth_stiffness;
+	d->bending_stiffness = this->cloth_bending_stiffness;
+	
+
+	return d;
+}
+
+RR_SHARED_PTR<edu::rpi::cats::utilities::clothsim::ClothLinks > ClothSimImpl::getClothLinks()
+{
+	boost::lock_guard<boost::mutex> guard(mtx_);
+	RR_SHARED_PTR<edu::rpi::cats::utilities::clothsim::ClothLinks > s(new edu::rpi::cats::utilities::clothsim::ClothLinks());
+
+	btSoftBody::Node *node_address0 = &this->cloth->m_nodes.at(0);
+
+	uint16_t *left_nodes = new uint16_t[this->cloth->m_links.size()];
+	uint16_t *right_nodes = new uint16_t[this->cloth->m_links.size()];
+	float *resting_lengths = new float[this->cloth->m_links.size()];
+	float *stiffness = new float[this->cloth->m_links.size()];
+	for (unsigned int i = 0; i < this->cloth->m_links.size(); ++i)
+	{
+		left_nodes[i] = this->cloth->m_links.at(i).m_n[0] - node_address0;
+		right_nodes[i] = this->cloth->m_links.at(i).m_n[1] - node_address0;
+		resting_lengths[i] = this->cloth->m_links.at(i).m_rl;
+		stiffness[i] = this->cloth->m_links.at(i).m_bbending ? this->cloth_bending_stiffness : this->cloth_stiffness;
+	}
+
+	s->left_node = RobotRaconteur::AttachRRArray<uint16_t>(left_nodes, this->cloth->m_links.size(), true);
+	s->right_node = RobotRaconteur::AttachRRArray<uint16_t>(right_nodes, this->cloth->m_links.size(), true);
+	s->length = RobotRaconteur::AttachRRArray<float>(resting_lengths, this->cloth->m_links.size(), true);
+	s->stiffness = RobotRaconteur::AttachRRArray<float>(stiffness, this->cloth->m_links.size(), true);
+
+	return s;
 }
 
 int ClothSimImpl::initWorldAndCloth()
@@ -88,7 +137,6 @@ int ClothSimImpl::initWorldAndCloth()
 															this->numX, this->numY, 0, true);
 	std::cout << "SoftBodyHelper generated cloth with..." << std::endl;
 	std::cout << "Nodes: " << cloth->m_nodes.size() << std::endl;
-	std::cout << "Links: " << cloth->m_links.size() << std::endl;
 	
 	cloth->getCollisionShape()->setMargin(0.001f);
 
@@ -100,11 +148,8 @@ int ClothSimImpl::initWorldAndCloth()
 
 	btSoftBody::Material *bending_material = cloth->appendMaterial();
 	bending_material->m_kLST = this->cloth_bending_stiffness;
-	bending_material->m_kAST = 1;
-	bending_material->m_kVST = 1;
 	bending_material->m_flags -= btSoftBody::fMaterial::DebugDraw;
 	cloth->generateBendingConstraints(2, bending_material);
-	std::cout << "After adding bending constraints..." << std::endl;
 	std::cout << "Links: " << cloth->m_links.size() << std::endl;
 	
 
@@ -156,10 +201,12 @@ int ClothSimImpl::initWorldAndCloth()
 		}
 	}
 
+	
+
 
 	cloth->setTotalMass(this->cloth_mass);
 	cloth->m_cfg.kDP = this->cloth_damping;
-	cloth->m_cfg.piterations = 5;
+	cloth->m_cfg.piterations = 1;// 10;// 5;
 	cloth->updateConstants();
 
 	world->addSoftBody(cloth);
@@ -306,6 +353,18 @@ RR_SHARED_PTR<RobotRaconteur::RRArray<uint16_t > > ClothSimImpl::getFaceStructur
 	return F;
 }
 
+void ClothSimImpl::setClothStiffness(double stiffness, uint8_t piterations)
+{
+	boost::lock_guard<boost::mutex> guard(mtx_);
+
+	cloth->m_cfg.piterations = piterations;// 10;// 5;
+
+	for (int i = 0, ni = cloth->m_links.size(); i < ni; ++i)
+		cloth->m_links.at(i).m_material->m_kLST = stiffness;
+	cloth->updateLinkConstants();
+
+}
+
 void ClothSimImpl::setNewGraspVelocities(double tstep, RR_SHARED_PTR<edu::rpi::cats::utilities::clothsim::Pose > p, std::vector<node_relationship> &grasp_nodes)
 {
 	btMatrix3x3 Rot(p->R->ptr()[0], p->R->ptr()[1], p->R->ptr()[2],
@@ -330,11 +389,28 @@ void ClothSimImpl::stepForwardGraspPoints(double tstep, std::vector<node_relatio
 	}
 }
 
+void ClothSimImpl::solveNodeCost()
+{
+	for (int i = 0; i < this->n_points; ++i)
+		this->f[i] = 0.f;
 
+	btSoftBody::Node *n0 = &this->cloth->m_nodes.at(0);
+	for (int i = 0, ni = this->cloth->m_links.size(); i < ni; ++i)
+	{
+		btSoftBody::Link li = this->cloth->m_links.at(i);
+		int a = li.m_n[0] - n0;
+		int b = li.m_n[1] - n0;
+		btScalar dx = (li.m_n[1]->m_x - li.m_n[0]->m_x).norm() - li.m_rl;
+		float fi = dx*dx;
+		this->f[a] += fi;
+		this->f[b] += fi;
+	}
+}
 
 void ClothSimImpl::solveSpringForces(btScalar structural_stiffness, btScalar bending_stiffness)
 {
 	// clear out current force magnitudes
+	/*
 	for (unsigned int i = 0; i < this->n_points; ++i)
 	{
 		this->fx[i] = this->fy[i] = 0.f;
@@ -354,7 +430,36 @@ void ClothSimImpl::solveSpringForces(btScalar structural_stiffness, btScalar ben
 		this->fx[b] += -f.x();
 		this->fy[b] += -f.y();
 		this->fz[b] += -f.z();
+	}*/
+}
+
+void ClothSimImpl::addSpringForces(btScalar structural_stiffness, btScalar bending_stiffness)
+{
+	for (unsigned int i = 0, ni = this->n_points; i < ni; ++i)
+		this->spring_forces.at(i) = btVector3(0.f,0.f,0.f);
+	
+
+	for (int i = 0, ni = cloth->m_links.size(); i < ni; ++i)
+	{
+		btScalar k = this->cloth->m_links.at(i).m_bbending ? bending_stiffness : structural_stiffness;
+		int a = this->cloth->m_links.at(i).m_n[0] - &this->cloth->m_nodes.at(0);
+		int b = this->cloth->m_links.at(i).m_n[1] - &this->cloth->m_nodes.at(0);
+		btVector3 dx = this->cloth->m_links.at(i).m_n[1]->m_x - this->cloth->m_links.at(i).m_n[0]->m_x;
+		btVector3 f = k*(1.f - this->cloth->m_links.at(i).m_rl / dx.norm())*dx;
+		
+		this->spring_forces.at(a) += f;
+		this->spring_forces.at(b) -= f;
+
+		//this->fx[a] += f.x();
+		//this->fy[a] += f.y();
+		//this->fz[a] += f.z();
+		//this->fx[b] += -f.x();
+		//this->fy[b] += -f.y();
+		//this->fz[b] += -f.z();
 	}
+	
+	for (unsigned int i = 0, ni = this->n_points; i < ni; ++i)
+		this->cloth->addForce(this->spring_forces.at(i), i);
 }
 
 void ClothSimImpl::setCameraPose(RR_SHARED_PTR<edu::rpi::cats::utilities::clothsim::Pose > pk)
@@ -455,8 +560,8 @@ void ClothSimImpl::write_data_to_file()
 	this->record_stream << this->t;
 	for (int i = 0; i < this->n_points; i++)
 	{
-		this->record_stream << ", " << this->cloth->m_nodes[i].m_x.x() << ", " << this->cloth->m_nodes[i].m_x.y() << ", " << this->cloth->m_nodes[i].m_x.z();
-		this->record_stream << ", " << this->fx[i] << ", " << this->fy[i] << ", " << this->fz[i];
+		this->record_stream << ", " << this->cloth->m_nodes[i].m_x.x() << ", " << this->cloth->m_nodes[i].m_x.y() << ", " << this->cloth->m_nodes[i].m_x.z() << ", " << this->f[i];
+		//this->record_stream << ", " << this->fx[i] << ", " << this->fy[i] << ", " << this->fz[i];
 	}
 	this->record_stream << std::endl;
 
@@ -490,8 +595,9 @@ RR_SHARED_PTR<edu::rpi::cats::utilities::clothsim::ClothState > ClothSimImpl::st
 			stepForwardGraspPoints(sim_time, this->grasp01_nodes);
 			stepForwardGraspPoints(sim_time, this->grasp11_nodes);
 
+			//addSpringForces(.001f, .001f);
 			this->world->stepSimulation(sim_time, 1, this->dt);
-			solveSpringForces(50.f, 1.f);
+			//solveSpringForces(0.1f, 0.1f);
 			time_left -= sim_time;
 			this->t += sim_time;
 			if (this->_recording)
@@ -499,6 +605,82 @@ RR_SHARED_PTR<edu::rpi::cats::utilities::clothsim::ClothState > ClothSimImpl::st
 
 		}
 	}
+
+	// Update local variables storing the mesh positions
+	for (unsigned int i = 0; i < this->n_points; i++)
+	{
+		this->x[i] = this->cloth->m_nodes.at(i).m_x.x();
+		this->y[i] = this->cloth->m_nodes.at(i).m_x.y();
+		this->z[i] = this->cloth->m_nodes.at(i).m_x.z();
+	}
+	solveNodeCost();
+
+
+
+	CState->numX = this->numX;
+	CState->numY = this->numY;
+	CState->n_points = this->n_points;
+	CState->t = this->t;
+	CState->x = RobotRaconteur::AttachRRArrayCopy<double>(this->x, this->n_points);
+	CState->y = RobotRaconteur::AttachRRArrayCopy<double>(this->y, this->n_points);
+	CState->z = RobotRaconteur::AttachRRArrayCopy<double>(this->z, this->n_points);
+	CState->f = RobotRaconteur::AttachRRArrayCopy<double>(this->f, this->n_points);
+	//CState->fx = RobotRaconteur::AttachRRArrayCopy<double>(this->fx, this->n_points);
+	//CState->fy = RobotRaconteur::AttachRRArrayCopy<double>(this->fy, this->n_points);
+	//CState->fz = RobotRaconteur::AttachRRArrayCopy<double>(this->fz, this->n_points);
+
+	return CState;
+
+}
+
+RR_SHARED_PTR<edu::rpi::cats::utilities::clothsim::ClothState > ClothSimImpl::stepSimToConverge(
+	RR_SHARED_PTR<edu::rpi::cats::utilities::clothsim::Pose > p00,
+	RR_SHARED_PTR<edu::rpi::cats::utilities::clothsim::Pose > p10,
+	RR_SHARED_PTR<edu::rpi::cats::utilities::clothsim::Pose > p01,
+	RR_SHARED_PTR<edu::rpi::cats::utilities::clothsim::Pose > p11)
+{
+	boost::lock_guard<boost::mutex> guard(mtx_);
+
+	RR_SHARED_PTR<edu::rpi::cats::utilities::clothsim::ClothState> CState(new edu::rpi::cats::utilities::clothsim::ClothState());
+
+	btScalar tstep = 0.25f;
+	float cloth_cost = 100.f; // Arbitrarily large
+	float cloth_cost_last;
+
+	int k = 0;
+	while (k < 15)
+	{
+		k++;
+		setNewGraspVelocities(tstep, p00, this->grasp00_nodes);
+		setNewGraspVelocities(tstep, p10, this->grasp10_nodes);
+		setNewGraspVelocities(tstep, p01, this->grasp01_nodes);
+		setNewGraspVelocities(tstep, p11, this->grasp11_nodes);
+
+		int steps = ceil(tstep / this->dt);
+		btScalar time_left = tstep;
+		for (int i = 0; i < steps; ++i)
+		{
+			btScalar sim_time = std::min(time_left, this->dt);
+
+			stepForwardGraspPoints(sim_time, this->grasp00_nodes);
+			stepForwardGraspPoints(sim_time, this->grasp10_nodes);
+			stepForwardGraspPoints(sim_time, this->grasp01_nodes);
+			stepForwardGraspPoints(sim_time, this->grasp11_nodes);
+
+			this->world->stepSimulation(sim_time, 1, this->dt);
+			time_left -= sim_time;
+			this->t += sim_time;
+		}
+
+		solveNodeCost();
+		cloth_cost_last = cloth_cost;
+		cloth_cost = 0.f;
+		for (int i = 0; i < this->n_points; ++i)
+			cloth_cost += this->f[i];
+		if (fabs(cloth_cost - cloth_cost_last) < .001)
+			break;
+	}
+	std::cout << "Converged in " << k << " steps, change: " << fabs(cloth_cost - cloth_cost_last) << std::endl;
 
 	// Update local variables storing the mesh positions
 	for (unsigned int i = 0; i < this->n_points; i++)
@@ -517,10 +699,7 @@ RR_SHARED_PTR<edu::rpi::cats::utilities::clothsim::ClothState > ClothSimImpl::st
 	CState->x = RobotRaconteur::AttachRRArrayCopy<double>(this->x, this->n_points);
 	CState->y = RobotRaconteur::AttachRRArrayCopy<double>(this->y, this->n_points);
 	CState->z = RobotRaconteur::AttachRRArrayCopy<double>(this->z, this->n_points);
-	CState->fx = RobotRaconteur::AttachRRArrayCopy<double>(this->fx, this->n_points);
-	CState->fy = RobotRaconteur::AttachRRArrayCopy<double>(this->fy, this->n_points);
-	CState->fz = RobotRaconteur::AttachRRArrayCopy<double>(this->fz, this->n_points);
+	CState->f = RobotRaconteur::AttachRRArrayCopy<double>(this->f, this->n_points);
 
 	return CState;
-
 }

@@ -33,6 +33,17 @@ std::string out(
 "field double[3] p\n"
 "end struct\n"
 "\n"
+"struct ClothDefinition\n"
+"field single width\n"
+"field single length\n"
+"field single mass\n"
+"field uint16 numX\n"
+"field uint16 numY\n"
+"field uint32 n_points\n"
+"field single structure_stiffness\n"
+"field single bending_stiffness\n"
+"end struct\n"
+"\n"
 "struct ClothState\n"
 "field double t\n"
 "field uint16 numX\n"
@@ -41,10 +52,15 @@ std::string out(
 "field double[] x\n"
 "field double[] y\n"
 "field double[] z\n"
-"field double[] fx\n"
-"field double[] fy\n"
-"field double[] fz\n"
+"field double[] f\n"
 "\n"
+"end struct\n"
+"\n"
+"struct ClothLinks\n"
+"field uint16[] left_node\n"
+"field uint16[] right_node\n"
+"field single[] length\n"
+"field single[] stiffness\n"
 "end struct\n"
 "\n"
 "struct DepthImage\n"
@@ -59,11 +75,17 @@ std::string out(
 "property uint16[] grasped_nodes01\n"
 "property uint16[] grasped_nodes11\n"
 "\n"
+"function ClothDefinition getClothDefinition()\n"
+"function ClothLinks getClothLinks()\n"
+"function void setClothStiffness(double stiffness, uint8 piterations)\n"
+"\n"
 "function void start_recording(string record_name)\n"
 "function void stop_recording()\n"
 "\n"
 "function ClothState stepForwardSim(double tstep, Pose p00, Pose p10, Pose p01, Pose p11)\n"
+"function ClothState stepSimToConverge(Pose p00, Pose p10, Pose p01, Pose p11)\n"
 "function uint16[] getFaceStructure()\n"
+"\n"
 "function void setCameraPose(Pose pk)\n"
 "function DepthImage getRenderedImage()\n"
 "\n"
@@ -77,7 +99,9 @@ boost::tuple<std::string,std::string> res=RobotRaconteur::SplitQualifiedName(s);
 std::string servicetype=res.get<0>();
 std::string objecttype=res.get<1>();
 if (objecttype=="Pose") return RobotRaconteur::rr_cast<RobotRaconteur::StructureStub>(RR_MAKE_SHARED<Pose_stub>(GetNode()));
+if (objecttype=="ClothDefinition") return RobotRaconteur::rr_cast<RobotRaconteur::StructureStub>(RR_MAKE_SHARED<ClothDefinition_stub>(GetNode()));
 if (objecttype=="ClothState") return RobotRaconteur::rr_cast<RobotRaconteur::StructureStub>(RR_MAKE_SHARED<ClothState_stub>(GetNode()));
+if (objecttype=="ClothLinks") return RobotRaconteur::rr_cast<RobotRaconteur::StructureStub>(RR_MAKE_SHARED<ClothLinks_stub>(GetNode()));
 if (objecttype=="DepthImage") return RobotRaconteur::rr_cast<RobotRaconteur::StructureStub>(RR_MAKE_SHARED<DepthImage_stub>(GetNode()));
 throw RobotRaconteur::ServiceException("Invalid structure stub type.");
 }
@@ -159,6 +183,34 @@ ret->p=RobotRaconteur::MessageElement::FindElement(m->Elements,"p")->CastData<Ro
 return ret;
 }
 
+RR_SHARED_PTR<RobotRaconteur::MessageElementStructure> ClothDefinition_stub::PackStructure(RR_SHARED_PTR<RobotRaconteur::RRObject> s)
+{
+RR_SHARED_PTR<ClothDefinition > s2=RobotRaconteur::rr_cast<ClothDefinition >(s);
+std::vector<RR_SHARED_PTR<RobotRaconteur::MessageElement> > vret;
+vret.push_back(RR_MAKE_SHARED<RobotRaconteur::MessageElement>("width",RobotRaconteur::rr_cast<RobotRaconteur::MessageElementData>(RobotRaconteur::ScalarToRRArray<float >(s2->width))));
+vret.push_back(RR_MAKE_SHARED<RobotRaconteur::MessageElement>("length",RobotRaconteur::rr_cast<RobotRaconteur::MessageElementData>(RobotRaconteur::ScalarToRRArray<float >(s2->length))));
+vret.push_back(RR_MAKE_SHARED<RobotRaconteur::MessageElement>("mass",RobotRaconteur::rr_cast<RobotRaconteur::MessageElementData>(RobotRaconteur::ScalarToRRArray<float >(s2->mass))));
+vret.push_back(RR_MAKE_SHARED<RobotRaconteur::MessageElement>("numX",RobotRaconteur::rr_cast<RobotRaconteur::MessageElementData>(RobotRaconteur::ScalarToRRArray<uint16_t >(s2->numX))));
+vret.push_back(RR_MAKE_SHARED<RobotRaconteur::MessageElement>("numY",RobotRaconteur::rr_cast<RobotRaconteur::MessageElementData>(RobotRaconteur::ScalarToRRArray<uint16_t >(s2->numY))));
+vret.push_back(RR_MAKE_SHARED<RobotRaconteur::MessageElement>("n_points",RobotRaconteur::rr_cast<RobotRaconteur::MessageElementData>(RobotRaconteur::ScalarToRRArray<uint32_t >(s2->n_points))));
+vret.push_back(RR_MAKE_SHARED<RobotRaconteur::MessageElement>("structure_stiffness",RobotRaconteur::rr_cast<RobotRaconteur::MessageElementData>(RobotRaconteur::ScalarToRRArray<float >(s2->structure_stiffness))));
+vret.push_back(RR_MAKE_SHARED<RobotRaconteur::MessageElement>("bending_stiffness",RobotRaconteur::rr_cast<RobotRaconteur::MessageElementData>(RobotRaconteur::ScalarToRRArray<float >(s2->bending_stiffness))));
+return RR_MAKE_SHARED<RobotRaconteur::MessageElementStructure>("edu.rpi.cats.utilities.clothsim.ClothDefinition",vret);
+}
+RR_SHARED_PTR<RobotRaconteur::RRStructure> ClothDefinition_stub::UnpackStructure(RR_SHARED_PTR<RobotRaconteur::MessageElementStructure> m)
+{
+RR_SHARED_PTR<ClothDefinition > ret=RR_MAKE_SHARED<ClothDefinition >();
+ret->width=RobotRaconteur::RRArrayToScalar<float >(RobotRaconteur::MessageElement::FindElement(m->Elements,"width")->CastData<RobotRaconteur::RRArray<float > >());
+ret->length=RobotRaconteur::RRArrayToScalar<float >(RobotRaconteur::MessageElement::FindElement(m->Elements,"length")->CastData<RobotRaconteur::RRArray<float > >());
+ret->mass=RobotRaconteur::RRArrayToScalar<float >(RobotRaconteur::MessageElement::FindElement(m->Elements,"mass")->CastData<RobotRaconteur::RRArray<float > >());
+ret->numX=RobotRaconteur::RRArrayToScalar<uint16_t >(RobotRaconteur::MessageElement::FindElement(m->Elements,"numX")->CastData<RobotRaconteur::RRArray<uint16_t > >());
+ret->numY=RobotRaconteur::RRArrayToScalar<uint16_t >(RobotRaconteur::MessageElement::FindElement(m->Elements,"numY")->CastData<RobotRaconteur::RRArray<uint16_t > >());
+ret->n_points=RobotRaconteur::RRArrayToScalar<uint32_t >(RobotRaconteur::MessageElement::FindElement(m->Elements,"n_points")->CastData<RobotRaconteur::RRArray<uint32_t > >());
+ret->structure_stiffness=RobotRaconteur::RRArrayToScalar<float >(RobotRaconteur::MessageElement::FindElement(m->Elements,"structure_stiffness")->CastData<RobotRaconteur::RRArray<float > >());
+ret->bending_stiffness=RobotRaconteur::RRArrayToScalar<float >(RobotRaconteur::MessageElement::FindElement(m->Elements,"bending_stiffness")->CastData<RobotRaconteur::RRArray<float > >());
+return ret;
+}
+
 RR_SHARED_PTR<RobotRaconteur::MessageElementStructure> ClothState_stub::PackStructure(RR_SHARED_PTR<RobotRaconteur::RRObject> s)
 {
 RR_SHARED_PTR<ClothState > s2=RobotRaconteur::rr_cast<ClothState >(s);
@@ -170,9 +222,7 @@ vret.push_back(RR_MAKE_SHARED<RobotRaconteur::MessageElement>("n_points",RobotRa
 vret.push_back(RR_MAKE_SHARED<RobotRaconteur::MessageElement>("x",RobotRaconteur::rr_cast<RobotRaconteur::MessageElementData>(s2->x)));
 vret.push_back(RR_MAKE_SHARED<RobotRaconteur::MessageElement>("y",RobotRaconteur::rr_cast<RobotRaconteur::MessageElementData>(s2->y)));
 vret.push_back(RR_MAKE_SHARED<RobotRaconteur::MessageElement>("z",RobotRaconteur::rr_cast<RobotRaconteur::MessageElementData>(s2->z)));
-vret.push_back(RR_MAKE_SHARED<RobotRaconteur::MessageElement>("fx",RobotRaconteur::rr_cast<RobotRaconteur::MessageElementData>(s2->fx)));
-vret.push_back(RR_MAKE_SHARED<RobotRaconteur::MessageElement>("fy",RobotRaconteur::rr_cast<RobotRaconteur::MessageElementData>(s2->fy)));
-vret.push_back(RR_MAKE_SHARED<RobotRaconteur::MessageElement>("fz",RobotRaconteur::rr_cast<RobotRaconteur::MessageElementData>(s2->fz)));
+vret.push_back(RR_MAKE_SHARED<RobotRaconteur::MessageElement>("f",RobotRaconteur::rr_cast<RobotRaconteur::MessageElementData>(s2->f)));
 return RR_MAKE_SHARED<RobotRaconteur::MessageElementStructure>("edu.rpi.cats.utilities.clothsim.ClothState",vret);
 }
 RR_SHARED_PTR<RobotRaconteur::RRStructure> ClothState_stub::UnpackStructure(RR_SHARED_PTR<RobotRaconteur::MessageElementStructure> m)
@@ -185,9 +235,27 @@ ret->n_points=RobotRaconteur::RRArrayToScalar<uint32_t >(RobotRaconteur::Message
 ret->x=RobotRaconteur::MessageElement::FindElement(m->Elements,"x")->CastData<RobotRaconteur::RRArray<double > >();
 ret->y=RobotRaconteur::MessageElement::FindElement(m->Elements,"y")->CastData<RobotRaconteur::RRArray<double > >();
 ret->z=RobotRaconteur::MessageElement::FindElement(m->Elements,"z")->CastData<RobotRaconteur::RRArray<double > >();
-ret->fx=RobotRaconteur::MessageElement::FindElement(m->Elements,"fx")->CastData<RobotRaconteur::RRArray<double > >();
-ret->fy=RobotRaconteur::MessageElement::FindElement(m->Elements,"fy")->CastData<RobotRaconteur::RRArray<double > >();
-ret->fz=RobotRaconteur::MessageElement::FindElement(m->Elements,"fz")->CastData<RobotRaconteur::RRArray<double > >();
+ret->f=RobotRaconteur::MessageElement::FindElement(m->Elements,"f")->CastData<RobotRaconteur::RRArray<double > >();
+return ret;
+}
+
+RR_SHARED_PTR<RobotRaconteur::MessageElementStructure> ClothLinks_stub::PackStructure(RR_SHARED_PTR<RobotRaconteur::RRObject> s)
+{
+RR_SHARED_PTR<ClothLinks > s2=RobotRaconteur::rr_cast<ClothLinks >(s);
+std::vector<RR_SHARED_PTR<RobotRaconteur::MessageElement> > vret;
+vret.push_back(RR_MAKE_SHARED<RobotRaconteur::MessageElement>("left_node",RobotRaconteur::rr_cast<RobotRaconteur::MessageElementData>(s2->left_node)));
+vret.push_back(RR_MAKE_SHARED<RobotRaconteur::MessageElement>("right_node",RobotRaconteur::rr_cast<RobotRaconteur::MessageElementData>(s2->right_node)));
+vret.push_back(RR_MAKE_SHARED<RobotRaconteur::MessageElement>("length",RobotRaconteur::rr_cast<RobotRaconteur::MessageElementData>(s2->length)));
+vret.push_back(RR_MAKE_SHARED<RobotRaconteur::MessageElement>("stiffness",RobotRaconteur::rr_cast<RobotRaconteur::MessageElementData>(s2->stiffness)));
+return RR_MAKE_SHARED<RobotRaconteur::MessageElementStructure>("edu.rpi.cats.utilities.clothsim.ClothLinks",vret);
+}
+RR_SHARED_PTR<RobotRaconteur::RRStructure> ClothLinks_stub::UnpackStructure(RR_SHARED_PTR<RobotRaconteur::MessageElementStructure> m)
+{
+RR_SHARED_PTR<ClothLinks > ret=RR_MAKE_SHARED<ClothLinks >();
+ret->left_node=RobotRaconteur::MessageElement::FindElement(m->Elements,"left_node")->CastData<RobotRaconteur::RRArray<uint16_t > >();
+ret->right_node=RobotRaconteur::MessageElement::FindElement(m->Elements,"right_node")->CastData<RobotRaconteur::RRArray<uint16_t > >();
+ret->length=RobotRaconteur::MessageElement::FindElement(m->Elements,"length")->CastData<RobotRaconteur::RRArray<float > >();
+ret->stiffness=RobotRaconteur::MessageElement::FindElement(m->Elements,"stiffness")->CastData<RobotRaconteur::RRArray<float > >();
 return ret;
 }
 
@@ -270,6 +338,30 @@ req->AddElement(RR_MAKE_SHARED<RobotRaconteur::MessageElement>("value",RobotRaco
 RR_SHARED_PTR<RobotRaconteur::MessageEntry> mr=ProcessTransaction(req);
 }
 
+RR_SHARED_PTR<ClothDefinition > ClothSimulator_stub::getClothDefinition()
+{
+RR_SHARED_PTR<RobotRaconteur::MessageEntry> rr_req=RR_MAKE_SHARED<RobotRaconteur::MessageEntry>(RobotRaconteur::MessageEntryType_FunctionCallReq,"getClothDefinition");
+RR_SHARED_PTR<RobotRaconteur::MessageEntry> rr_ret=ProcessTransaction(rr_req);
+RR_SHARED_PTR<RobotRaconteur::MessageElement> rr_me=rr_ret->FindElement("return");
+return RobotRaconteur::rr_cast<ClothDefinition >(RRGetNode()->UnpackStructure(rr_me->CastData<RobotRaconteur::MessageElementStructure>()));
+}
+
+RR_SHARED_PTR<ClothLinks > ClothSimulator_stub::getClothLinks()
+{
+RR_SHARED_PTR<RobotRaconteur::MessageEntry> rr_req=RR_MAKE_SHARED<RobotRaconteur::MessageEntry>(RobotRaconteur::MessageEntryType_FunctionCallReq,"getClothLinks");
+RR_SHARED_PTR<RobotRaconteur::MessageEntry> rr_ret=ProcessTransaction(rr_req);
+RR_SHARED_PTR<RobotRaconteur::MessageElement> rr_me=rr_ret->FindElement("return");
+return RobotRaconteur::rr_cast<ClothLinks >(RRGetNode()->UnpackStructure(rr_me->CastData<RobotRaconteur::MessageElementStructure>()));
+}
+
+void ClothSimulator_stub::setClothStiffness(double stiffness, uint8_t piterations)
+{
+RR_SHARED_PTR<RobotRaconteur::MessageEntry> rr_req=RR_MAKE_SHARED<RobotRaconteur::MessageEntry>(RobotRaconteur::MessageEntryType_FunctionCallReq,"setClothStiffness");
+rr_req->AddElement(RR_MAKE_SHARED<RobotRaconteur::MessageElement>("stiffness",RobotRaconteur::rr_cast<RobotRaconteur::MessageElementData>(RobotRaconteur::ScalarToRRArray<double >(stiffness))));
+rr_req->AddElement(RR_MAKE_SHARED<RobotRaconteur::MessageElement>("piterations",RobotRaconteur::rr_cast<RobotRaconteur::MessageElementData>(RobotRaconteur::ScalarToRRArray<uint8_t >(piterations))));
+RR_SHARED_PTR<RobotRaconteur::MessageEntry> rr_ret=ProcessTransaction(rr_req);
+}
+
 void ClothSimulator_stub::start_recording(std::string record_name)
 {
 RR_SHARED_PTR<RobotRaconteur::MessageEntry> rr_req=RR_MAKE_SHARED<RobotRaconteur::MessageEntry>(RobotRaconteur::MessageEntryType_FunctionCallReq,"start_recording");
@@ -287,6 +379,18 @@ RR_SHARED_PTR<ClothState > ClothSimulator_stub::stepForwardSim(double tstep, RR_
 {
 RR_SHARED_PTR<RobotRaconteur::MessageEntry> rr_req=RR_MAKE_SHARED<RobotRaconteur::MessageEntry>(RobotRaconteur::MessageEntryType_FunctionCallReq,"stepForwardSim");
 rr_req->AddElement(RR_MAKE_SHARED<RobotRaconteur::MessageElement>("tstep",RobotRaconteur::rr_cast<RobotRaconteur::MessageElementData>(RobotRaconteur::ScalarToRRArray<double >(tstep))));
+rr_req->AddElement(RR_MAKE_SHARED<RobotRaconteur::MessageElement>("p00",RobotRaconteur::rr_cast<RobotRaconteur::MessageElementData>(RRGetNode()->PackStructure(RobotRaconteur::rr_cast<RobotRaconteur::RRStructure>(p00)))));
+rr_req->AddElement(RR_MAKE_SHARED<RobotRaconteur::MessageElement>("p10",RobotRaconteur::rr_cast<RobotRaconteur::MessageElementData>(RRGetNode()->PackStructure(RobotRaconteur::rr_cast<RobotRaconteur::RRStructure>(p10)))));
+rr_req->AddElement(RR_MAKE_SHARED<RobotRaconteur::MessageElement>("p01",RobotRaconteur::rr_cast<RobotRaconteur::MessageElementData>(RRGetNode()->PackStructure(RobotRaconteur::rr_cast<RobotRaconteur::RRStructure>(p01)))));
+rr_req->AddElement(RR_MAKE_SHARED<RobotRaconteur::MessageElement>("p11",RobotRaconteur::rr_cast<RobotRaconteur::MessageElementData>(RRGetNode()->PackStructure(RobotRaconteur::rr_cast<RobotRaconteur::RRStructure>(p11)))));
+RR_SHARED_PTR<RobotRaconteur::MessageEntry> rr_ret=ProcessTransaction(rr_req);
+RR_SHARED_PTR<RobotRaconteur::MessageElement> rr_me=rr_ret->FindElement("return");
+return RobotRaconteur::rr_cast<ClothState >(RRGetNode()->UnpackStructure(rr_me->CastData<RobotRaconteur::MessageElementStructure>()));
+}
+
+RR_SHARED_PTR<ClothState > ClothSimulator_stub::stepSimToConverge(RR_SHARED_PTR<Pose > p00, RR_SHARED_PTR<Pose > p10, RR_SHARED_PTR<Pose > p01, RR_SHARED_PTR<Pose > p11)
+{
+RR_SHARED_PTR<RobotRaconteur::MessageEntry> rr_req=RR_MAKE_SHARED<RobotRaconteur::MessageEntry>(RobotRaconteur::MessageEntryType_FunctionCallReq,"stepSimToConverge");
 rr_req->AddElement(RR_MAKE_SHARED<RobotRaconteur::MessageElement>("p00",RobotRaconteur::rr_cast<RobotRaconteur::MessageElementData>(RRGetNode()->PackStructure(RobotRaconteur::rr_cast<RobotRaconteur::RRStructure>(p00)))));
 rr_req->AddElement(RR_MAKE_SHARED<RobotRaconteur::MessageElement>("p10",RobotRaconteur::rr_cast<RobotRaconteur::MessageElementData>(RRGetNode()->PackStructure(RobotRaconteur::rr_cast<RobotRaconteur::RRStructure>(p10)))));
 rr_req->AddElement(RR_MAKE_SHARED<RobotRaconteur::MessageElement>("p01",RobotRaconteur::rr_cast<RobotRaconteur::MessageElementData>(RRGetNode()->PackStructure(RobotRaconteur::rr_cast<RobotRaconteur::RRStructure>(p01)))));
@@ -569,6 +673,100 @@ return;
 }
 handler(RR_SHARED_PTR<RobotRaconteur::RobotRaconteurException>());
 }
+void ClothSimulator_stub::async_getClothDefinition(boost::function<void (RR_SHARED_PTR<ClothDefinition >, RR_SHARED_PTR<RobotRaconteur::RobotRaconteurException>) > rr_handler, int32_t rr_timeout)
+{
+RR_SHARED_PTR<RobotRaconteur::MessageEntry> rr_req=RR_MAKE_SHARED<RobotRaconteur::MessageEntry>(RobotRaconteur::MessageEntryType_FunctionCallReq,"getClothDefinition");
+AsyncProcessTransaction(rr_req,boost::bind(&ClothSimulator_stub::rrend_getClothDefinition, RobotRaconteur::rr_cast<ClothSimulator_stub>(shared_from_this()),_1,_2,rr_handler ),rr_timeout);
+}
+
+void ClothSimulator_stub::rrend_getClothDefinition(RR_SHARED_PTR<RobotRaconteur::MessageEntry> m, RR_SHARED_PTR<RobotRaconteur::RobotRaconteurException> err, boost::function< void (RR_SHARED_PTR<ClothDefinition > ,RR_SHARED_PTR<RobotRaconteur::RobotRaconteurException>) > handler)
+{
+if (err)
+{
+handler(RR_SHARED_PTR<ClothDefinition >(),err);
+return;
+}
+if (m->Error != RobotRaconteur::MessageErrorType_None)
+{
+handler(RR_SHARED_PTR<ClothDefinition >(),RobotRaconteur::RobotRaconteurExceptionUtil::MessageEntryToException(m));
+return;
+}
+RR_SHARED_PTR<ClothDefinition > rr_ret;
+try
+{
+RR_SHARED_PTR<RobotRaconteur::MessageElement> me=m->FindElement("return");
+rr_ret=RobotRaconteur::rr_cast<ClothDefinition >(RRGetNode()->UnpackStructure(me->CastData<RobotRaconteur::MessageElementStructure>()));
+}
+catch (RobotRaconteur::RobotRaconteurException& err)
+{
+handler(RR_SHARED_PTR<ClothDefinition >(),RobotRaconteur::RobotRaconteurExceptionUtil::DownCastException(err));
+return;
+}
+catch (std::exception& err)
+{
+handler(RR_SHARED_PTR<ClothDefinition >(),RR_MAKE_SHARED<RobotRaconteur::RobotRaconteurRemoteException>(std::string(typeid(err).name()),err.what()));
+return;
+}
+handler(rr_ret, RR_SHARED_PTR<RobotRaconteur::RobotRaconteurException>());
+}
+void ClothSimulator_stub::async_getClothLinks(boost::function<void (RR_SHARED_PTR<ClothLinks >, RR_SHARED_PTR<RobotRaconteur::RobotRaconteurException>) > rr_handler, int32_t rr_timeout)
+{
+RR_SHARED_PTR<RobotRaconteur::MessageEntry> rr_req=RR_MAKE_SHARED<RobotRaconteur::MessageEntry>(RobotRaconteur::MessageEntryType_FunctionCallReq,"getClothLinks");
+AsyncProcessTransaction(rr_req,boost::bind(&ClothSimulator_stub::rrend_getClothLinks, RobotRaconteur::rr_cast<ClothSimulator_stub>(shared_from_this()),_1,_2,rr_handler ),rr_timeout);
+}
+
+void ClothSimulator_stub::rrend_getClothLinks(RR_SHARED_PTR<RobotRaconteur::MessageEntry> m, RR_SHARED_PTR<RobotRaconteur::RobotRaconteurException> err, boost::function< void (RR_SHARED_PTR<ClothLinks > ,RR_SHARED_PTR<RobotRaconteur::RobotRaconteurException>) > handler)
+{
+if (err)
+{
+handler(RR_SHARED_PTR<ClothLinks >(),err);
+return;
+}
+if (m->Error != RobotRaconteur::MessageErrorType_None)
+{
+handler(RR_SHARED_PTR<ClothLinks >(),RobotRaconteur::RobotRaconteurExceptionUtil::MessageEntryToException(m));
+return;
+}
+RR_SHARED_PTR<ClothLinks > rr_ret;
+try
+{
+RR_SHARED_PTR<RobotRaconteur::MessageElement> me=m->FindElement("return");
+rr_ret=RobotRaconteur::rr_cast<ClothLinks >(RRGetNode()->UnpackStructure(me->CastData<RobotRaconteur::MessageElementStructure>()));
+}
+catch (RobotRaconteur::RobotRaconteurException& err)
+{
+handler(RR_SHARED_PTR<ClothLinks >(),RobotRaconteur::RobotRaconteurExceptionUtil::DownCastException(err));
+return;
+}
+catch (std::exception& err)
+{
+handler(RR_SHARED_PTR<ClothLinks >(),RR_MAKE_SHARED<RobotRaconteur::RobotRaconteurRemoteException>(std::string(typeid(err).name()),err.what()));
+return;
+}
+handler(rr_ret, RR_SHARED_PTR<RobotRaconteur::RobotRaconteurException>());
+}
+void ClothSimulator_stub::async_setClothStiffness(double stiffness, uint8_t piterations,boost::function<void (RR_SHARED_PTR<RobotRaconteur::RobotRaconteurException>) > rr_handler, int32_t rr_timeout)
+{
+RR_SHARED_PTR<RobotRaconteur::MessageEntry> rr_req=RR_MAKE_SHARED<RobotRaconteur::MessageEntry>(RobotRaconteur::MessageEntryType_FunctionCallReq,"setClothStiffness");
+rr_req->AddElement(RR_MAKE_SHARED<RobotRaconteur::MessageElement>("stiffness",RobotRaconteur::rr_cast<RobotRaconteur::MessageElementData>(RobotRaconteur::ScalarToRRArray<double >(stiffness))));
+rr_req->AddElement(RR_MAKE_SHARED<RobotRaconteur::MessageElement>("piterations",RobotRaconteur::rr_cast<RobotRaconteur::MessageElementData>(RobotRaconteur::ScalarToRRArray<uint8_t >(piterations))));
+AsyncProcessTransaction(rr_req,boost::bind(&ClothSimulator_stub::rrend_setClothStiffness, RobotRaconteur::rr_cast<ClothSimulator_stub>(shared_from_this()),_1,_2,rr_handler ),rr_timeout);
+}
+
+void ClothSimulator_stub::rrend_setClothStiffness(RR_SHARED_PTR<RobotRaconteur::MessageEntry> m, RR_SHARED_PTR<RobotRaconteur::RobotRaconteurException> err, boost::function< void (RR_SHARED_PTR<RobotRaconteur::RobotRaconteurException>) > handler)
+{
+if (err)
+{
+handler(err);
+return;
+}
+if (m->Error != RobotRaconteur::MessageErrorType_None)
+{
+handler(RobotRaconteur::RobotRaconteurExceptionUtil::MessageEntryToException(m));
+return;
+}
+handler(RR_SHARED_PTR<RobotRaconteur::RobotRaconteurException>());
+}
 void ClothSimulator_stub::async_start_recording(std::string record_name,boost::function<void (RR_SHARED_PTR<RobotRaconteur::RobotRaconteurException>) > rr_handler, int32_t rr_timeout)
 {
 RR_SHARED_PTR<RobotRaconteur::MessageEntry> rr_req=RR_MAKE_SHARED<RobotRaconteur::MessageEntry>(RobotRaconteur::MessageEntryType_FunctionCallReq,"start_recording");
@@ -622,6 +820,46 @@ AsyncProcessTransaction(rr_req,boost::bind(&ClothSimulator_stub::rrend_stepForwa
 }
 
 void ClothSimulator_stub::rrend_stepForwardSim(RR_SHARED_PTR<RobotRaconteur::MessageEntry> m, RR_SHARED_PTR<RobotRaconteur::RobotRaconteurException> err, boost::function< void (RR_SHARED_PTR<ClothState > ,RR_SHARED_PTR<RobotRaconteur::RobotRaconteurException>) > handler)
+{
+if (err)
+{
+handler(RR_SHARED_PTR<ClothState >(),err);
+return;
+}
+if (m->Error != RobotRaconteur::MessageErrorType_None)
+{
+handler(RR_SHARED_PTR<ClothState >(),RobotRaconteur::RobotRaconteurExceptionUtil::MessageEntryToException(m));
+return;
+}
+RR_SHARED_PTR<ClothState > rr_ret;
+try
+{
+RR_SHARED_PTR<RobotRaconteur::MessageElement> me=m->FindElement("return");
+rr_ret=RobotRaconteur::rr_cast<ClothState >(RRGetNode()->UnpackStructure(me->CastData<RobotRaconteur::MessageElementStructure>()));
+}
+catch (RobotRaconteur::RobotRaconteurException& err)
+{
+handler(RR_SHARED_PTR<ClothState >(),RobotRaconteur::RobotRaconteurExceptionUtil::DownCastException(err));
+return;
+}
+catch (std::exception& err)
+{
+handler(RR_SHARED_PTR<ClothState >(),RR_MAKE_SHARED<RobotRaconteur::RobotRaconteurRemoteException>(std::string(typeid(err).name()),err.what()));
+return;
+}
+handler(rr_ret, RR_SHARED_PTR<RobotRaconteur::RobotRaconteurException>());
+}
+void ClothSimulator_stub::async_stepSimToConverge(RR_SHARED_PTR<Pose > p00, RR_SHARED_PTR<Pose > p10, RR_SHARED_PTR<Pose > p01, RR_SHARED_PTR<Pose > p11,boost::function<void (RR_SHARED_PTR<ClothState >, RR_SHARED_PTR<RobotRaconteur::RobotRaconteurException>) > rr_handler, int32_t rr_timeout)
+{
+RR_SHARED_PTR<RobotRaconteur::MessageEntry> rr_req=RR_MAKE_SHARED<RobotRaconteur::MessageEntry>(RobotRaconteur::MessageEntryType_FunctionCallReq,"stepSimToConverge");
+rr_req->AddElement(RR_MAKE_SHARED<RobotRaconteur::MessageElement>("p00",RobotRaconteur::rr_cast<RobotRaconteur::MessageElementData>(RRGetNode()->PackStructure(RobotRaconteur::rr_cast<RobotRaconteur::RRStructure>(p00)))));
+rr_req->AddElement(RR_MAKE_SHARED<RobotRaconteur::MessageElement>("p10",RobotRaconteur::rr_cast<RobotRaconteur::MessageElementData>(RRGetNode()->PackStructure(RobotRaconteur::rr_cast<RobotRaconteur::RRStructure>(p10)))));
+rr_req->AddElement(RR_MAKE_SHARED<RobotRaconteur::MessageElement>("p01",RobotRaconteur::rr_cast<RobotRaconteur::MessageElementData>(RRGetNode()->PackStructure(RobotRaconteur::rr_cast<RobotRaconteur::RRStructure>(p01)))));
+rr_req->AddElement(RR_MAKE_SHARED<RobotRaconteur::MessageElement>("p11",RobotRaconteur::rr_cast<RobotRaconteur::MessageElementData>(RRGetNode()->PackStructure(RobotRaconteur::rr_cast<RobotRaconteur::RRStructure>(p11)))));
+AsyncProcessTransaction(rr_req,boost::bind(&ClothSimulator_stub::rrend_stepSimToConverge, RobotRaconteur::rr_cast<ClothSimulator_stub>(shared_from_this()),_1,_2,rr_handler ),rr_timeout);
+}
+
+void ClothSimulator_stub::rrend_stepSimToConverge(RR_SHARED_PTR<RobotRaconteur::MessageEntry> m, RR_SHARED_PTR<RobotRaconteur::RobotRaconteurException> err, boost::function< void (RR_SHARED_PTR<ClothState > ,RR_SHARED_PTR<RobotRaconteur::RobotRaconteurException>) > handler)
 {
 if (err)
 {
@@ -997,6 +1235,53 @@ RR_SHARED_PTR<RobotRaconteur::MessageEntry> ClothSimulator_skel::CallFunction(RR
 {
 RR_SHARED_PTR<RobotRaconteur::MessageEntry> rr_mr=RR_MAKE_SHARED<RobotRaconteur::MessageEntry>(RobotRaconteur::MessageEntryType_FunctionCallRes,rr_m->MemberName);
 RR_SHARED_PTR<edu::rpi::cats::utilities::clothsim::async_ClothSimulator > async_obj=get_asyncobj();
+if (rr_m->MemberName == "getClothDefinition")
+{
+if (async_obj)
+{
+RR_WEAK_PTR<edu::rpi::cats::utilities::clothsim::ClothSimulator_skel> rr_wp=RobotRaconteur::rr_cast<edu::rpi::cats::utilities::clothsim::ClothSimulator_skel>(shared_from_this());
+async_obj->async_getClothDefinition(boost::bind(&edu::rpi::cats::utilities::clothsim::ClothSimulator_skel::rr_getClothDefinition, rr_wp, _1, _2, rr_m, RobotRaconteur::ServerEndpoint::GetCurrentEndpoint()));
+return RR_SHARED_PTR<RobotRaconteur::MessageEntry>();
+}
+else
+{
+RR_SHARED_PTR<ClothDefinition > rr_return=get_obj()->getClothDefinition();
+rr_mr->AddElement(RR_MAKE_SHARED<RobotRaconteur::MessageElement>("return",RobotRaconteur::rr_cast<RobotRaconteur::MessageElementData>(RRGetNode()->PackStructure(RobotRaconteur::rr_cast<RobotRaconteur::RRStructure>(rr_return)))));
+return rr_mr;
+}
+}
+if (rr_m->MemberName == "getClothLinks")
+{
+if (async_obj)
+{
+RR_WEAK_PTR<edu::rpi::cats::utilities::clothsim::ClothSimulator_skel> rr_wp=RobotRaconteur::rr_cast<edu::rpi::cats::utilities::clothsim::ClothSimulator_skel>(shared_from_this());
+async_obj->async_getClothLinks(boost::bind(&edu::rpi::cats::utilities::clothsim::ClothSimulator_skel::rr_getClothLinks, rr_wp, _1, _2, rr_m, RobotRaconteur::ServerEndpoint::GetCurrentEndpoint()));
+return RR_SHARED_PTR<RobotRaconteur::MessageEntry>();
+}
+else
+{
+RR_SHARED_PTR<ClothLinks > rr_return=get_obj()->getClothLinks();
+rr_mr->AddElement(RR_MAKE_SHARED<RobotRaconteur::MessageElement>("return",RobotRaconteur::rr_cast<RobotRaconteur::MessageElementData>(RRGetNode()->PackStructure(RobotRaconteur::rr_cast<RobotRaconteur::RRStructure>(rr_return)))));
+return rr_mr;
+}
+}
+if (rr_m->MemberName == "setClothStiffness")
+{
+double stiffness =RobotRaconteur::RRArrayToScalar<double >(rr_m->FindElement("stiffness")->CastData<RobotRaconteur::RRArray<double > >());
+uint8_t piterations =RobotRaconteur::RRArrayToScalar<uint8_t >(rr_m->FindElement("piterations")->CastData<RobotRaconteur::RRArray<uint8_t > >());
+if (async_obj)
+{
+RR_WEAK_PTR<edu::rpi::cats::utilities::clothsim::ClothSimulator_skel> rr_wp=RobotRaconteur::rr_cast<edu::rpi::cats::utilities::clothsim::ClothSimulator_skel>(shared_from_this());
+async_obj->async_setClothStiffness(stiffness, piterations, boost::bind(&edu::rpi::cats::utilities::clothsim::ClothSimulator_skel::rr_setClothStiffness,rr_wp, _1, rr_m, RobotRaconteur::ServerEndpoint::GetCurrentEndpoint()));
+return RR_SHARED_PTR<RobotRaconteur::MessageEntry>();
+}
+else
+{
+get_obj()->setClothStiffness(stiffness, piterations);
+rr_mr->AddElement("return",RobotRaconteur::ScalarToRRArray<int32_t>(0));
+return rr_mr;
+}
+}
 if (rr_m->MemberName == "start_recording")
 {
 std::string record_name =RobotRaconteur::RRArrayToString(rr_m->FindElement("record_name")->CastData<RobotRaconteur::RRArray<char> >());
@@ -1044,6 +1329,25 @@ return RR_SHARED_PTR<RobotRaconteur::MessageEntry>();
 else
 {
 RR_SHARED_PTR<ClothState > rr_return=get_obj()->stepForwardSim(tstep, p00, p10, p01, p11);
+rr_mr->AddElement(RR_MAKE_SHARED<RobotRaconteur::MessageElement>("return",RobotRaconteur::rr_cast<RobotRaconteur::MessageElementData>(RRGetNode()->PackStructure(RobotRaconteur::rr_cast<RobotRaconteur::RRStructure>(rr_return)))));
+return rr_mr;
+}
+}
+if (rr_m->MemberName == "stepSimToConverge")
+{
+RR_SHARED_PTR<Pose > p00 =RobotRaconteur::rr_cast<Pose >(RRGetNode()->UnpackStructure(rr_m->FindElement("p00")->CastData<RobotRaconteur::MessageElementStructure>()));
+RR_SHARED_PTR<Pose > p10 =RobotRaconteur::rr_cast<Pose >(RRGetNode()->UnpackStructure(rr_m->FindElement("p10")->CastData<RobotRaconteur::MessageElementStructure>()));
+RR_SHARED_PTR<Pose > p01 =RobotRaconteur::rr_cast<Pose >(RRGetNode()->UnpackStructure(rr_m->FindElement("p01")->CastData<RobotRaconteur::MessageElementStructure>()));
+RR_SHARED_PTR<Pose > p11 =RobotRaconteur::rr_cast<Pose >(RRGetNode()->UnpackStructure(rr_m->FindElement("p11")->CastData<RobotRaconteur::MessageElementStructure>()));
+if (async_obj)
+{
+RR_WEAK_PTR<edu::rpi::cats::utilities::clothsim::ClothSimulator_skel> rr_wp=RobotRaconteur::rr_cast<edu::rpi::cats::utilities::clothsim::ClothSimulator_skel>(shared_from_this());
+async_obj->async_stepSimToConverge(p00, p10, p01, p11, boost::bind(&edu::rpi::cats::utilities::clothsim::ClothSimulator_skel::rr_stepSimToConverge, rr_wp, _1, _2, rr_m, RobotRaconteur::ServerEndpoint::GetCurrentEndpoint()));
+return RR_SHARED_PTR<RobotRaconteur::MessageEntry>();
+}
+else
+{
+RR_SHARED_PTR<ClothState > rr_return=get_obj()->stepSimToConverge(p00, p10, p01, p11);
 rr_mr->AddElement(RR_MAKE_SHARED<RobotRaconteur::MessageElement>("return",RobotRaconteur::rr_cast<RobotRaconteur::MessageElementData>(RRGetNode()->PackStructure(RobotRaconteur::rr_cast<RobotRaconteur::RRStructure>(rr_return)))));
 return rr_mr;
 }
@@ -1097,6 +1401,73 @@ return rr_mr;
 throw RobotRaconteur::MemberNotFoundException("Member not found");
 }
 
+void ClothSimulator_skel::rr_getClothDefinition(RR_WEAK_PTR<edu::rpi::cats::utilities::clothsim::ClothSimulator_skel> skel, RR_SHARED_PTR<ClothDefinition > ret, RR_SHARED_PTR<RobotRaconteur::RobotRaconteurException> err, RR_SHARED_PTR<RobotRaconteur::MessageEntry> m, RR_SHARED_PTR<RobotRaconteur::ServerEndpoint> ep)
+{
+if(err)
+{
+EndAsyncCallFunction(skel,RR_SHARED_PTR<RobotRaconteur::MessageElement>(),err,m, ep);
+return;
+}
+try
+{
+RR_SHARED_PTR<edu::rpi::cats::utilities::clothsim::ClothSimulator_skel> skel1=skel.lock();
+if (!skel1) throw std::runtime_error("skel release");
+RR_SHARED_PTR<RobotRaconteur::MessageElement> mr=RR_MAKE_SHARED<RobotRaconteur::MessageElement>("return",RobotRaconteur::rr_cast<RobotRaconteur::MessageElementData>(skel1->RRGetNode()->PackStructure(RobotRaconteur::rr_cast<RobotRaconteur::RRStructure>(ret))));
+EndAsyncCallFunction(skel, mr, err, m,ep);
+}
+catch (RobotRaconteur::RobotRaconteurException& err2)
+{
+EndAsyncCallFunction(skel,RR_SHARED_PTR<RobotRaconteur::MessageElement>(),RobotRaconteur::RobotRaconteurExceptionUtil::DownCastException(err2),m, ep);
+}
+catch (std::exception& err2)
+{
+EndAsyncCallFunction(skel,RR_SHARED_PTR<RobotRaconteur::MessageElement>(),RR_MAKE_SHARED<RobotRaconteur::DataTypeException>(err2.what()),m, ep);
+}
+}
+void ClothSimulator_skel::rr_getClothLinks(RR_WEAK_PTR<edu::rpi::cats::utilities::clothsim::ClothSimulator_skel> skel, RR_SHARED_PTR<ClothLinks > ret, RR_SHARED_PTR<RobotRaconteur::RobotRaconteurException> err, RR_SHARED_PTR<RobotRaconteur::MessageEntry> m, RR_SHARED_PTR<RobotRaconteur::ServerEndpoint> ep)
+{
+if(err)
+{
+EndAsyncCallFunction(skel,RR_SHARED_PTR<RobotRaconteur::MessageElement>(),err,m, ep);
+return;
+}
+try
+{
+RR_SHARED_PTR<edu::rpi::cats::utilities::clothsim::ClothSimulator_skel> skel1=skel.lock();
+if (!skel1) throw std::runtime_error("skel release");
+RR_SHARED_PTR<RobotRaconteur::MessageElement> mr=RR_MAKE_SHARED<RobotRaconteur::MessageElement>("return",RobotRaconteur::rr_cast<RobotRaconteur::MessageElementData>(skel1->RRGetNode()->PackStructure(RobotRaconteur::rr_cast<RobotRaconteur::RRStructure>(ret))));
+EndAsyncCallFunction(skel, mr, err, m,ep);
+}
+catch (RobotRaconteur::RobotRaconteurException& err2)
+{
+EndAsyncCallFunction(skel,RR_SHARED_PTR<RobotRaconteur::MessageElement>(),RobotRaconteur::RobotRaconteurExceptionUtil::DownCastException(err2),m, ep);
+}
+catch (std::exception& err2)
+{
+EndAsyncCallFunction(skel,RR_SHARED_PTR<RobotRaconteur::MessageElement>(),RR_MAKE_SHARED<RobotRaconteur::DataTypeException>(err2.what()),m, ep);
+}
+}
+void ClothSimulator_skel::rr_setClothStiffness(RR_WEAK_PTR<edu::rpi::cats::utilities::clothsim::ClothSimulator_skel> skel, RR_SHARED_PTR<RobotRaconteur::RobotRaconteurException> err, RR_SHARED_PTR<RobotRaconteur::MessageEntry> m, RR_SHARED_PTR<RobotRaconteur::ServerEndpoint> ep)
+{
+if(err)
+{
+EndAsyncCallFunction(skel,RR_SHARED_PTR<RobotRaconteur::MessageElement>(),err,m, ep);
+return;
+}
+try
+{
+RR_SHARED_PTR<RobotRaconteur::MessageElement> mr=RR_MAKE_SHARED<RobotRaconteur::MessageElement>("return",RobotRaconteur::ScalarToRRArray<int32_t>(0));
+EndAsyncCallFunction(skel, mr, err, m,ep);
+}
+catch (RobotRaconteur::RobotRaconteurException& err2)
+{
+EndAsyncCallFunction(skel,RR_SHARED_PTR<RobotRaconteur::MessageElement>(),RobotRaconteur::RobotRaconteurExceptionUtil::DownCastException(err2),m, ep);
+}
+catch (std::exception& err2)
+{
+EndAsyncCallFunction(skel,RR_SHARED_PTR<RobotRaconteur::MessageElement>(),RR_MAKE_SHARED<RobotRaconteur::DataTypeException>(err2.what()),m, ep);
+}
+}
 void ClothSimulator_skel::rr_start_recording(RR_WEAK_PTR<edu::rpi::cats::utilities::clothsim::ClothSimulator_skel> skel, RR_SHARED_PTR<RobotRaconteur::RobotRaconteurException> err, RR_SHARED_PTR<RobotRaconteur::MessageEntry> m, RR_SHARED_PTR<RobotRaconteur::ServerEndpoint> ep)
 {
 if(err)
@@ -1140,6 +1511,29 @@ EndAsyncCallFunction(skel,RR_SHARED_PTR<RobotRaconteur::MessageElement>(),RR_MAK
 }
 }
 void ClothSimulator_skel::rr_stepForwardSim(RR_WEAK_PTR<edu::rpi::cats::utilities::clothsim::ClothSimulator_skel> skel, RR_SHARED_PTR<ClothState > ret, RR_SHARED_PTR<RobotRaconteur::RobotRaconteurException> err, RR_SHARED_PTR<RobotRaconteur::MessageEntry> m, RR_SHARED_PTR<RobotRaconteur::ServerEndpoint> ep)
+{
+if(err)
+{
+EndAsyncCallFunction(skel,RR_SHARED_PTR<RobotRaconteur::MessageElement>(),err,m, ep);
+return;
+}
+try
+{
+RR_SHARED_PTR<edu::rpi::cats::utilities::clothsim::ClothSimulator_skel> skel1=skel.lock();
+if (!skel1) throw std::runtime_error("skel release");
+RR_SHARED_PTR<RobotRaconteur::MessageElement> mr=RR_MAKE_SHARED<RobotRaconteur::MessageElement>("return",RobotRaconteur::rr_cast<RobotRaconteur::MessageElementData>(skel1->RRGetNode()->PackStructure(RobotRaconteur::rr_cast<RobotRaconteur::RRStructure>(ret))));
+EndAsyncCallFunction(skel, mr, err, m,ep);
+}
+catch (RobotRaconteur::RobotRaconteurException& err2)
+{
+EndAsyncCallFunction(skel,RR_SHARED_PTR<RobotRaconteur::MessageElement>(),RobotRaconteur::RobotRaconteurExceptionUtil::DownCastException(err2),m, ep);
+}
+catch (std::exception& err2)
+{
+EndAsyncCallFunction(skel,RR_SHARED_PTR<RobotRaconteur::MessageElement>(),RR_MAKE_SHARED<RobotRaconteur::DataTypeException>(err2.what()),m, ep);
+}
+}
+void ClothSimulator_skel::rr_stepSimToConverge(RR_WEAK_PTR<edu::rpi::cats::utilities::clothsim::ClothSimulator_skel> skel, RR_SHARED_PTR<ClothState > ret, RR_SHARED_PTR<RobotRaconteur::RobotRaconteurException> err, RR_SHARED_PTR<RobotRaconteur::MessageEntry> m, RR_SHARED_PTR<RobotRaconteur::ServerEndpoint> ep)
 {
 if(err)
 {
